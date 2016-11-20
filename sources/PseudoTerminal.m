@@ -404,11 +404,18 @@ static NSRect iTermRectCenteredVerticallyWithinRect(NSRect frameToCenter, NSRect
         case WINDOW_TYPE_BOTTOM_PARTIAL:
         case WINDOW_TYPE_LEFT_PARTIAL:
         case WINDOW_TYPE_RIGHT_PARTIAL:
-        case WINDOW_TYPE_NO_TITLE_BAR:
             return mask | NSBorderlessWindowMask | NSResizableWindowMask;
 
         case WINDOW_TYPE_TRADITIONAL_FULL_SCREEN:
             return mask | NSBorderlessWindowMask;
+
+        case WINDOW_TYPE_NO_TITLE_BAR:
+            return (mask |
+                    NSWindowStyleMaskTitled |
+                    NSWindowStyleMaskFullSizeContentView |
+                    NSWindowStyleMaskMiniaturizable |
+                    NSWindowStyleMaskResizable |
+                    NSWindowStyleMaskTexturedBackground);
 
         default:
             return (mask |
@@ -620,7 +627,7 @@ static NSRect iTermRectCenteredVerticallyWithinRect(NSRect frameToCenter, NSRect
         [myWindow setFrame:initialFrame display:NO];
     }
 
-    [myWindow setHasShadow:(windowType == WINDOW_TYPE_NORMAL)];
+    [myWindow setHasShadow:(windowType == WINDOW_TYPE_NORMAL || windowType == WINDOW_TYPE_NO_TITLE_BAR)];
 
     DLog(@"Create window %@", myWindow);
 
@@ -672,6 +679,12 @@ static NSRect iTermRectCenteredVerticallyWithinRect(NSRect frameToCenter, NSRect
 
     [self updateTabBarStyle];
     self.window.delegate = self;
+
+    // Hide title bar if applicable
+    if (windowType == WINDOW_TYPE_NO_TITLE_BAR) {
+      NSButton * closeButton = [[self window] standardWindowButton:NSWindowCloseButton];
+      [[[closeButton superview] superview] removeFromSuperview];
+    }
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(updateWindowNumberVisibility:)
@@ -859,6 +872,7 @@ ITERM_WEAKLY_REFERENCEABLE
     return ([iTermPreferences boolForKey:kPreferenceKeyEnableDivisionView] &&
             !togglingFullScreen_ &&
             (self.window.styleMask & NSTitledWindowMask) &&
+            self.windowType != WINDOW_TYPE_NO_TITLE_BAR &&
             ![self anyFullScreen] &&
             ![self tabBarVisibleOnTop]);
 }
